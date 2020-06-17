@@ -261,3 +261,38 @@ textarea {
   }
 }
 
+.image-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.image-container .main-image {
+  max-width: 80%;
+}
+
+.image-container .links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.image-container .links .social-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 5px;
+}
+
+@media (min-width: 600px) {
+  .image-container .links .social-icon {
+    width: 75px;
+    height: 75px;
+    margin: 0 15px;
+  }
+}
