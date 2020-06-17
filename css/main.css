@@ -12,10 +12,11 @@
    ========================================================================== */
 
 html {
-  color: #222;
+  color: #4DFFFF;
   background-color: #333;
   font-size: 1em;
   line-height: 1.4;
+  font-family: 'Open Sans', sans-serif;
 }
 
 /*
@@ -293,6 +294,9 @@ textarea {
 }
 
 @media (min-width: 600px) {
+  .description {
+    font-size: 2vw;
+  }
   .image-container .links .social-icon {
     width: 75px;
     height: 75px;
