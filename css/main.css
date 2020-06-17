@@ -275,7 +275,8 @@ textarea {
 }
 
 .image-container .main-image {
-  max-width: 400px;
+  width: 400px;
+  max-width: 80%;
   margin-bottom: 30px;
 }
 
