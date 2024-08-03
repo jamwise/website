@@ -1,0 +1,15 @@
+{
+  "name": "pathfinder",
+  "type": "module",
+  "version": "0.0.1",
+  "files": [
+    "pathfinder_bg.wasm",
+    "pathfinder.js",
+    "pathfinder.d.ts"
+  ],
+  "main": "pathfinder.js",
+  "types": "pathfinder.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
