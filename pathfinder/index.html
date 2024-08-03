@@ -31,7 +31,7 @@
 
       // fetch /toront.osm and pass it to load_pbf as a uint8Array
       async function fetchAndLoadPbf() {
-        const response = await fetch("/toronto.pbf");
+        const response = await fetch("toronto.pbf");
         const arrayBuffer = await response.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
 
