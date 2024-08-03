@@ -1,0 +1,105 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OSM shortest path</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/mapbox-gl-leaflet@0.0.16/leaflet-mapbox-gl.js"></script>
+
+    <script src="pkg/pathfinder.js" type="module"></script>
+    <script type="module">
+      import init, { Pathfinder } from "./pkg/pathfinder.js";
+
+      window.now = Date.now;
+      window.requested_path = [];
+
+      await init();
+
+      // fetch /toront.osm and pass it to load_pbf as a uint8Array
+      async function fetchAndLoadPbf() {
+        const response = await fetch("/toronto.pbf");
+        const arrayBuffer = await response.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        window.pathfinder = new Pathfinder(uint8Array);
+        // console.log(window.pathfinder.get_directions(-79.3895253, 43.6554459, -79.3872960, 43.6685017));
+      }
+      fetchAndLoadPbf();
+    </script>
+    <script>
+
+      function addToMap([narrative, polyline, perf]) {
+        // clear previous lines and circles:
+        map.eachLayer((layer) => {
+          if (layer instanceof L.Polyline || layer instanceof L.Circle) {
+            map.removeLayer(layer);
+          }
+        });
+
+        const stepsEl = document.getElementById("steps");
+        const perfEl = document.getElementById("perf");
+        perfEl.textContent = `Calculated route in ${perf}ms`;
+
+        stepsEl.innerHTML = "";
+        console.log(polyline);
+        L.polyline(polyline, { color: "red", weight: 5 }).addTo(map);
+        narrative.forEach((step, index) => {
+          const li = document.createElement("li");
+          li.textContent = step[0];
+          stepsEl.appendChild(li);
+          L.circle([step[4], step[3]], { color: "blue", radius: 20 }).addTo(
+            map
+          );
+        });
+      };
+
+      document.addEventListener("DOMContentLoaded", function () {
+        window.map = L.map("map").setView([43.6616365, -79.3890339], 15);
+        var gl = L.mapboxGL({
+          accessToken: 'ZFTgUXwScIU8bC17eiYs',
+          style: "https://api.maptiler.com/maps/streets/style.json?key=ZFTgUXwScIU8bC17eiYs",
+          pitchWithRotate: true,
+          dragRotate: true,
+        }).addTo(map);
+        // get lat and long when someone clicks on the map:
+        map.on("click", function (e) {
+          window.requested_path.push([e.latlng.lng, e.latlng.lat]);
+          const length = window.requested_path.length;
+          if (length == 2) {
+            addToMap(
+              window.pathfinder.get_directions(
+                window.requested_path[0][0],
+                window.requested_path[0][1],
+                window.requested_path[1][0],
+                window.requested_path[1][1]
+              )
+            );
+            window.requested_path = [];
+          }
+        });
+      });
+      
+    </script>
+  </head>
+  <body>
+    <div id="map" style="height: 500px"></div>
+    <div class="card">
+      <ul id="perf"></ul>
+      <ul id="steps"></ul>
+    </div>
+  </body>
+</html>
