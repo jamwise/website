@@ -43,7 +43,7 @@
     <script>
 
       function addToMap(directions) {
-        const [coordinates, perf] = directions;
+        const [narrative, coordinates, waypoints, perf] = directions;
         // clear previous lines and circles:
         map.eachLayer((layer) => {
           if (layer instanceof L.Polyline || layer instanceof L.Circle) {
@@ -57,16 +57,18 @@
 
         stepsEl.innerHTML = "";
         const polyline = coordinates.map((coord) => [coord.lat, coord.lon]);
-        console.log(polyline);
         L.polyline(polyline, { color: "red", weight: 5 }).addTo(map);
-        // narrative.forEach((step, index) => {
-        //   const li = document.createElement("li");
-        //   li.textContent = step[0];
-        //   stepsEl.appendChild(li);
-        //   L.circle([step[4], step[3]], { color: "blue", radius: 20 }).addTo(
-        //     map
-        //   );
-        // });
+        narrative.forEach((step, index) => {
+          const li = document.createElement("li");
+          li.textContent = step[0];
+          stepsEl.appendChild(li);
+
+        });
+        waypoints.forEach((waypoint) => {
+          L.circle([waypoint.lat, waypoint.lon], { color: "blue", radius: 20 }).addTo(
+            map
+          );
+        });
       };
 
       document.addEventListener("DOMContentLoaded", function () {
