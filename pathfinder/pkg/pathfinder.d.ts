@@ -9,13 +9,10 @@ export class Pathfinder {
 */
   constructor(pbf_contents: Uint8Array);
 /**
-* @param {number} start_lon
-* @param {number} start_lat
-* @param {number} end_lon
-* @param {number} end_lat
+* @param {Array<any>} points
 * @returns {any}
 */
-  get_directions(start_lon: number, start_lat: number, end_lon: number, end_lat: number): any;
+  get_directions(points: Array<any>): any;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -24,7 +21,7 @@ export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly __wbg_pathfinder_free: (a: number) => void;
   readonly pathfinder_new: (a: number, b: number) => number;
-  readonly pathfinder_get_directions: (a: number, b: number, c: number, d: number, e: number) => number;
+  readonly pathfinder_get_directions: (a: number, b: number) => number;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;

@@ -42,7 +42,8 @@
     </script>
     <script>
 
-      function addToMap([narrative, polyline, perf]) {
+      function addToMap(directions) {
+        const [coordinates, perf] = directions;
         // clear previous lines and circles:
         map.eachLayer((layer) => {
           if (layer instanceof L.Polyline || layer instanceof L.Circle) {
@@ -55,16 +56,17 @@
         perfEl.textContent = `Calculated route in ${perf}ms`;
 
         stepsEl.innerHTML = "";
+        const polyline = coordinates.map((coord) => [coord.lat, coord.lon]);
         console.log(polyline);
         L.polyline(polyline, { color: "red", weight: 5 }).addTo(map);
-        narrative.forEach((step, index) => {
-          const li = document.createElement("li");
-          li.textContent = step[0];
-          stepsEl.appendChild(li);
-          L.circle([step[4], step[3]], { color: "blue", radius: 20 }).addTo(
-            map
-          );
-        });
+        // narrative.forEach((step, index) => {
+        //   const li = document.createElement("li");
+        //   li.textContent = step[0];
+        //   stepsEl.appendChild(li);
+        //   L.circle([step[4], step[3]], { color: "blue", radius: 20 }).addTo(
+        //     map
+        //   );
+        // });
       };
 
       document.addEventListener("DOMContentLoaded", function () {
@@ -79,16 +81,11 @@
         map.on("click", function (e) {
           window.requested_path.push([e.latlng.lng, e.latlng.lat]);
           const length = window.requested_path.length;
-          if (length == 2) {
+          if (length > 1) {
             addToMap(
-              window.pathfinder.get_directions(
-                window.requested_path[0][0],
-                window.requested_path[0][1],
-                window.requested_path[1][0],
-                window.requested_path[1][1]
-              )
+              window.pathfinder.get_directions(window.requested_path)
             );
-            window.requested_path = [];
+            // window.requested_path = [];
           }
         });
       });
