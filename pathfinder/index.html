@@ -41,7 +41,6 @@
       fetchAndLoadPbf();
     </script>
     <script>
-
       function addToMap(directions) {
         const [narrative, coordinates, waypoints, perf] = directions;
         // clear previous lines and circles:
@@ -59,23 +58,33 @@
         const polyline = coordinates.map((coord) => [coord.lat, coord.lon]);
         L.polyline(polyline, { color: "red", weight: 5 }).addTo(map);
         narrative.forEach((step, index) => {
+          const [instructions, start_lon, start_lat, end_lon, end_lat] = step;
+          L.circle([start_lat, start_lon], {
+            color: "green",
+            radius: 33,
+          }).addTo(map);
+          L.circle([end_lat, end_lon], {
+            color: "red",
+            radius: 45,
+          }).addTo(map);
           const li = document.createElement("li");
-          li.textContent = step[0];
+          li.textContent = instructions;
           stepsEl.appendChild(li);
-
         });
         waypoints.forEach((waypoint) => {
-          L.circle([waypoint.lat, waypoint.lon], { color: "blue", radius: 20 }).addTo(
-            map
-          );
+          L.circle([waypoint.lat, waypoint.lon], {
+            color: "blue",
+            radius: 20,
+          }).addTo(map);
         });
-      };
+      }
 
       document.addEventListener("DOMContentLoaded", function () {
         window.map = L.map("map").setView([43.6616365, -79.3890339], 15);
         var gl = L.mapboxGL({
-          accessToken: 'ZFTgUXwScIU8bC17eiYs',
-          style: "https://api.maptiler.com/maps/streets/style.json?key=ZFTgUXwScIU8bC17eiYs",
+          accessToken: "ZFTgUXwScIU8bC17eiYs",
+          style:
+            "https://api.maptiler.com/maps/streets/style.json?key=ZFTgUXwScIU8bC17eiYs",
           pitchWithRotate: true,
           dragRotate: true,
         }).addTo(map);
@@ -84,14 +93,11 @@
           window.requested_path.push([e.latlng.lng, e.latlng.lat]);
           const length = window.requested_path.length;
           if (length > 1) {
-            addToMap(
-              window.pathfinder.get_directions(window.requested_path)
-            );
+            addToMap(window.pathfinder.get_directions(window.requested_path));
             // window.requested_path = [];
           }
         });
       });
-      
     </script>
   </head>
   <body>
