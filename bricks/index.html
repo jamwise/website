@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="manifest.json" />
+
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/service-worker.js")
+            .then((registration) => {
+              console.log("ServiceWorker registered");
+            })
+            .catch((err) => {
+              console.log("ServiceWorker registration failed: ", err);
+            });
+        });
+      }
+    </script>
+  </head>
+  <body style="overscroll-behavior: none">
+    <div
+      id="canvas"
+      style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh"
+    ></div>
+    <div id="groups" style="width: 100vw; height: 100vh"></div>
+    <div id="score"></div>
+    <div
+      id="touch-area"
+      style="
+        overscroll-behavior: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+      "
+    ></div>
+    <script module src="index.js"></script>
+  </body>
+</html>
