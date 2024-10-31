@@ -1,8 +1,8 @@
 const CACHE_NAME = 'bricks-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/index.js'
+  '/bricks/',
+  '/bricks/index.html',
+  '/bricks/index.js',
 ];
 
 self.addEventListener('install', event => {
