@@ -1,8 +1,0 @@
-{
-  "name": "Bricks",
-  "short_name": "Bricks",
-  "start_url": "/bricks/index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000"
-}
