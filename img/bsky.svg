@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="600"
+   height="530"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="bsky.svg"
+   inkscape:version="1.4 (e7c3feb1, 2024-10-09)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="0.85423462"
+     inkscape:cx="455.96373"
+     inkscape:cy="289.14773"
+     inkscape:window-width="1376"
+     inkscape:window-height="1039"
+     inkscape:window-x="2364"
+     inkscape:window-y="1093"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1" />
+  <path
+     d="m 163.85176,84.98196 c 55.11523,40.90381 114.39792,123.83969 136.16353,168.34792 21.76726,-44.50495 81.04663,-127.44493 136.16352,-168.34792 39.76823,-29.514556 104.20305,-52.351238 104.20305,20.3163 0,14.51269 -8.41698,121.91418 -13.3536,139.35038 -17.15969,60.62034 -79.68898,76.08186 -135.30981,66.72382 97.22413,16.35793 121.95703,70.54128 68.54343,124.72463 C 358.8189,539.00187 314.45883,410.2779 303.087,377.29413 c -2.08373,-6.04672 -3.05878,-8.87543 -3.07313,-6.47008 -0.0144,-2.40543 -0.98939,0.42336 -3.07312,6.47008 C 285.5739,410.2779 241.21466,539.00514 139.76588,436.09709 86.35145,381.91374 111.08352,327.72711 208.30931,311.37246 152.68682,320.7305 90.156701,305.26889 72.999501,244.64864 68.062703,227.21079 59.645895,119.80931 59.645895,105.29826 c 0,-72.667538 64.436475,-49.830856 104.203055,-20.3163 z"
+     fill="#ffffff"
+     id="path1"
+     style="fill:none;stroke:#ffffff;stroke-width:9;stroke-linecap:butt;stroke-dasharray:692.838, 30.76868;stroke-dashoffset:0;stroke-opacity:1;filter:url(#filter5)" />
+</svg>
