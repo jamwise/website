@@ -266,8 +266,52 @@
 <script type="module">
 import init, { load_graph, graph_loaded, num_nodes, get_neighbors, search_cards } from './pkg/synergize.js';
 
-const SCRYFALL_IMG = (name, face) =>
-  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${face ? '&face=' + face : ''}`;
+// Fetch direct image URLs from Scryfall's /cards/collection endpoint (75 per batch).
+// Images at cards.scryfall.io have no rate limit, only the API calls do.
+const imageCache = new Map();
+
+async function fetchImageUrls(names) {
+  const uncached = names.filter(n => !imageCache.has(n));
+  if (uncached.length === 0) return;
+
+  // Batch into groups of 75
+  for (let i = 0; i < uncached.length; i += 75) {
+    const batch = uncached.slice(i, i + 75);
+    try {
+      const resp = await fetch('https://api.scryfall.com/cards/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: batch.map(name => ({ name })) }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      for (const card of data.data || []) {
+        const entry = {};
+        if (card.image_uris) {
+          entry.front = card.image_uris.normal;
+        } else if (card.card_faces) {
+          if (card.card_faces[0]?.image_uris) entry.front = card.card_faces[0].image_uris.normal;
+          if (card.card_faces[1]?.image_uris) entry.back = card.card_faces[1].image_uris.normal;
+        }
+        // Cache under full name ("A // B") and each individual face name
+        imageCache.set(card.name, entry);
+        if (card.card_faces) {
+          for (const face of card.card_faces) {
+            imageCache.set(face.name, entry);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Scryfall batch fetch failed:', e);
+    }
+  }
+}
+
+function scryfallImgUrl(name, face) {
+  const entry = imageCache.get(name);
+  if (!entry) return null;
+  return face === 'back' ? entry.back : entry.front;
+}
 
 let selectedIdx = -1;
 let autocompleteItems = [];
@@ -402,13 +446,12 @@ async function main() {
     if (inputEl.value.trim()) doSearch(inputEl.value.trim());
   });
 
-  function doSearch(cardName) {
+  async function doSearch(cardName) {
     if (!cardName) return;
     const topN = parseInt(topNEl.value);
     const commander = asCommanderEl.checked ? cardName : null;
 
     const maxCmc = maxCmcEl.value !== '' ? parseInt(maxCmcEl.value) : null;
-    // Request extra results when filtering by CMC so we still fill the grid
     const fetchN = maxCmc !== null ? topN * 3 : topN;
 
     const t0 = performance.now();
@@ -428,24 +471,22 @@ async function main() {
 
     const cmcLabel = maxCmc !== null ? ` (CMC ≤ ${maxCmc})` : '';
     infoEl.textContent = `Top ${results.length} synergies for "${cardName}"${cmcLabel} (${elapsed}ms)`;
+
+    // Prefetch image URLs from Scryfall (2 API calls max for 100 cards)
+    await fetchImageUrls(results.map(r => r.name));
     renderResults(results);
   }
 
-  function lazyImg(img, url) {
+  function setImgSrc(img, url) {
     img.loading = 'lazy';
-    let retries = 0;
-    img.onerror = () => {
-      if (retries < 3) {
-        retries++;
-        setTimeout(() => { img.src = url; }, retries * 2000);
-      } else {
-        const ph = document.createElement('div');
-        ph.className = 'loading-placeholder';
-        ph.textContent = img.alt;
-        img.replaceWith(ph);
-      }
-    };
-    img.src = url;
+    if (url) {
+      img.src = url;
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'loading-placeholder';
+      ph.textContent = img.alt;
+      img.replaceWith(ph);
+    }
   }
 
   function renderResults(results) {
@@ -472,7 +513,7 @@ async function main() {
         const frontImg = document.createElement('img');
         frontImg.alt = r.name;
         frontImg.loading = 'lazy';
-        lazyImg(frontImg, SCRYFALL_IMG(r.name, 'front'));
+        setImgSrc(frontImg, scryfallImgUrl(r.name, 'front'));
         front.appendChild(frontImg);
 
         const back = document.createElement('div');
@@ -480,7 +521,7 @@ async function main() {
         const backImg = document.createElement('img');
         backImg.alt = r.back_face;
         backImg.loading = 'lazy';
-        lazyImg(backImg, SCRYFALL_IMG(r.name, 'back'));
+        setImgSrc(backImg, scryfallImgUrl(r.name, 'back'));
         back.appendChild(backImg);
 
         inner.appendChild(front);
@@ -504,7 +545,7 @@ async function main() {
         const img = document.createElement('img');
         img.alt = r.name;
         img.loading = 'lazy';
-        lazyImg(img, SCRYFALL_IMG(r.name));
+        setImgSrc(img, scryfallImgUrl(r.name));
         card.appendChild(img);
       }
 

@@ -333,8 +333,47 @@
 <script type="module">
 import init, { load_graph, graph_loaded, num_nodes, search_cards, build_deck } from './pkg/synergize.js';
 
-const SCRYFALL_IMG = (name, face) =>
-  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${face ? '&face=' + face : ''}`;
+const imageCache = new Map();
+
+async function fetchImageUrls(names) {
+  const uncached = names.filter(n => !imageCache.has(n));
+  if (uncached.length === 0) return;
+  for (let i = 0; i < uncached.length; i += 75) {
+    const batch = uncached.slice(i, i + 75);
+    try {
+      const resp = await fetch('https://api.scryfall.com/cards/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifiers: batch.map(name => ({ name })) }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      for (const card of data.data || []) {
+        const entry = {};
+        if (card.image_uris) {
+          entry.front = card.image_uris.normal;
+        } else if (card.card_faces) {
+          if (card.card_faces[0]?.image_uris) entry.front = card.card_faces[0].image_uris.normal;
+          if (card.card_faces[1]?.image_uris) entry.back = card.card_faces[1].image_uris.normal;
+        }
+        imageCache.set(card.name, entry);
+        if (card.card_faces) {
+          for (const face of card.card_faces) {
+            imageCache.set(face.name, entry);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Scryfall batch fetch failed:', e);
+    }
+  }
+}
+
+function scryfallImgUrl(name, face) {
+  const entry = imageCache.get(name);
+  if (!entry) return null;
+  return face === 'back' ? entry.back : entry.front;
+}
 
 const ROLES = [
   { key: 'land',       label: 'Lands',      default: 37, color: '#8B7355' },
@@ -469,7 +508,7 @@ async function main() {
     doBuild();
   });
 
-  function doBuild() {
+  async function doBuild() {
     const pcts = {};
     for (const role of ROLES) {
       pcts[role.key] = Math.round(sliderState[role.key]);
@@ -494,6 +533,10 @@ async function main() {
       ? (nonlandCards.reduce((sum, c) => sum + (c.cmc || 0), 0) / nonlandCards.length).toFixed(2)
       : '0.00';
     infoEl.textContent = `${deck.length} cards selected for "${selectedCommander}" — avg CMC ${avgCmc} (${elapsed}ms)`;
+
+    // Prefetch image URLs from Scryfall collection API
+    const uniqueNames = [...new Set(deck.map(c => c.name))];
+    await fetchImageUrls(uniqueNames);
     renderDeck(deck);
   }
 
@@ -558,7 +601,7 @@ async function main() {
           const frontImg = document.createElement('img');
           frontImg.alt = card.name;
           frontImg.loading = 'lazy';
-          frontImg.src = SCRYFALL_IMG(card.name, 'front');
+          frontImg.src = scryfallImgUrl(card.name, 'front') || '';
           frontImg.onerror = () => {
             const ph = document.createElement('div');
             ph.className = 'loading-placeholder';
@@ -572,7 +615,7 @@ async function main() {
           const backImg = document.createElement('img');
           backImg.alt = card.back_face;
           backImg.loading = 'lazy';
-          backImg.src = SCRYFALL_IMG(card.name, 'back');
+          backImg.src = scryfallImgUrl(card.name, 'back') || '';
           backImg.onerror = () => {
             const ph = document.createElement('div');
             ph.className = 'loading-placeholder';
@@ -602,7 +645,7 @@ async function main() {
           const img = document.createElement('img');
           img.alt = card.name;
           img.loading = 'lazy';
-          img.src = SCRYFALL_IMG(card.name);
+          img.src = scryfallImgUrl(card.name) || '';
           img.onerror = () => {
             const ph = document.createElement('div');
             ph.className = 'loading-placeholder';
