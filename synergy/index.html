@@ -35,6 +35,7 @@
     margin: 0 auto;
     padding: 0 1rem;
     position: relative;
+    flex-wrap: wrap;
   }
   #card-input {
     width: 100%;
@@ -47,8 +48,9 @@
     outline: none;
     transition: border-color 0.2s;
   }
-  #card-input:focus { border-color: #c9a227; }
+  #card-input:focus, #max-cmc:focus { border-color: #c9a227; }
   #card-input:disabled { opacity: 0.5; }
+  #max-cmc::placeholder { color: #666; font-size: 1.3rem; }
   #autocomplete {
     position: absolute;
     top: 100%;
@@ -127,6 +129,58 @@
     padding: 2px 8px;
     border-radius: 12px;
   }
+  .card-flip-container {
+    perspective: 600px;
+    width: 100%;
+    aspect-ratio: 488/680;
+  }
+  .card-flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+  }
+  .card-flip-inner.flipped {
+    transform: rotateY(180deg);
+  }
+  .card-flip-front, .card-flip-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-flip-back {
+    transform: rotateY(180deg);
+  }
+  .card-flip-front img, .card-flip-back img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 12px;
+  }
+  .card-flip-btn {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    padding: 1px 8px;
+    cursor: pointer;
+    z-index: 2;
+    line-height: 1.4;
+  }
+  .card-flip-btn:hover {
+    background: rgba(60,60,60,0.95);
+    color: #c9a227;
+  }
   .card .card-name-overlay {
     position: absolute;
     bottom: 0;
@@ -180,8 +234,13 @@
 
 <div id="status">Loading graph data...</div>
 
-<div class="search-area">
-  <input type="text" id="card-input" placeholder="Type a card name..." disabled autocomplete="off">
+<div class="search-area" style="display:flex;gap:0.5rem;align-items:stretch">
+  <input type="text" id="card-input" placeholder="Type a card name..." disabled autocomplete="off" style="flex:1">
+  <div style="position:relative;width:64px;flex-shrink:0">
+    <input type="number" id="max-cmc" min="0" max="20" placeholder="&#8734;" title="Max CMC"
+      style="width:100%;height:100%;padding:0.8rem 0.4rem;font-size:1.1rem;border:2px solid #333;border-radius:8px;background:#16213e;color:#e0e0e0;outline:none;text-align:center;transition:border-color 0.2s">
+    <span style="position:absolute;top:-0.5rem;left:50%;transform:translateX(-50%);font-size:0.65rem;color:#666;background:#1a1a2e;padding:0 4px">CMC</span>
+  </div>
   <div id="autocomplete"></div>
 </div>
 
@@ -207,8 +266,8 @@
 <script type="module">
 import init, { load_graph, graph_loaded, num_nodes, get_neighbors, search_cards } from './pkg/synergize.js';
 
-const SCRYFALL_IMG = name =>
-  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+const SCRYFALL_IMG = (name, face) =>
+  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${face ? '&face=' + face : ''}`;
 
 let selectedIdx = -1;
 let autocompleteItems = [];
@@ -221,6 +280,7 @@ async function main() {
   const infoEl = document.getElementById('results-info');
   const topNEl = document.getElementById('top-n');
   const asCommanderEl = document.getElementById('as-commander');
+  const maxCmcEl = document.getElementById('max-cmc');
 
   // Init WASM
   statusEl.textContent = 'Initializing WASM...';
@@ -338,16 +398,27 @@ async function main() {
   asCommanderEl.addEventListener('change', () => {
     if (inputEl.value.trim()) doSearch(inputEl.value.trim());
   });
+  maxCmcEl.addEventListener('input', () => {
+    if (inputEl.value.trim()) doSearch(inputEl.value.trim());
+  });
 
   function doSearch(cardName) {
     if (!cardName) return;
     const topN = parseInt(topNEl.value);
     const commander = asCommanderEl.checked ? cardName : null;
 
+    const maxCmc = maxCmcEl.value !== '' ? parseInt(maxCmcEl.value) : null;
+    // Request extra results when filtering by CMC so we still fill the grid
+    const fetchN = maxCmc !== null ? topN * 3 : topN;
+
     const t0 = performance.now();
-    const json = get_neighbors(cardName, topN, commander);
+    const json = get_neighbors(cardName, fetchN, commander);
     const elapsed = (performance.now() - t0).toFixed(1);
-    const results = JSON.parse(json);
+    let results = JSON.parse(json);
+
+    if (maxCmc !== null) {
+      results = results.filter(r => r.cmc <= maxCmc).slice(0, topN);
+    }
 
     if (results.length === 0) {
       infoEl.textContent = `No results for "${cardName}" (card not found or no synergies)`;
@@ -355,8 +426,26 @@ async function main() {
       return;
     }
 
-    infoEl.textContent = `Top ${results.length} synergies for "${cardName}" (${elapsed}ms)`;
+    const cmcLabel = maxCmc !== null ? ` (CMC ≤ ${maxCmc})` : '';
+    infoEl.textContent = `Top ${results.length} synergies for "${cardName}"${cmcLabel} (${elapsed}ms)`;
     renderResults(results);
+  }
+
+  function lazyImg(img, url) {
+    img.loading = 'lazy';
+    let retries = 0;
+    img.onerror = () => {
+      if (retries < 3) {
+        retries++;
+        setTimeout(() => { img.src = url; }, retries * 2000);
+      } else {
+        const ph = document.createElement('div');
+        ph.className = 'loading-placeholder';
+        ph.textContent = img.alt;
+        img.replaceWith(ph);
+      }
+    };
+    img.src = url;
   }
 
   function renderResults(results) {
@@ -364,24 +453,60 @@ async function main() {
     for (const r of results) {
       const card = document.createElement('div');
       card.className = 'card';
+      const hasBack = !!r.back_face;
 
       // Weight badge
       const badge = document.createElement('div');
       badge.className = 'card-weight';
       badge.textContent = r.weight;
 
-      // Image (lazy-ish via Scryfall)
-      const img = document.createElement('img');
-      img.alt = r.name;
-      img.loading = 'lazy';
-      img.src = SCRYFALL_IMG(r.name);
-      img.onerror = () => {
-        // Replace with placeholder if image not found
-        const ph = document.createElement('div');
-        ph.className = 'loading-placeholder';
-        ph.textContent = r.name;
-        img.replaceWith(ph);
-      };
+      if (hasBack) {
+        // 3D flip card
+        const container = document.createElement('div');
+        container.className = 'card-flip-container';
+        const inner = document.createElement('div');
+        inner.className = 'card-flip-inner';
+
+        const front = document.createElement('div');
+        front.className = 'card-flip-front';
+        const frontImg = document.createElement('img');
+        frontImg.alt = r.name;
+        frontImg.loading = 'lazy';
+        lazyImg(frontImg, SCRYFALL_IMG(r.name, 'front'));
+        front.appendChild(frontImg);
+
+        const back = document.createElement('div');
+        back.className = 'card-flip-back';
+        const backImg = document.createElement('img');
+        backImg.alt = r.back_face;
+        backImg.loading = 'lazy';
+        lazyImg(backImg, SCRYFALL_IMG(r.name, 'back'));
+        back.appendChild(backImg);
+
+        inner.appendChild(front);
+        inner.appendChild(back);
+        container.appendChild(inner);
+        card.appendChild(container);
+
+        const flipBtn = document.createElement('button');
+        flipBtn.className = 'card-flip-btn';
+        flipBtn.textContent = '\u21BB';
+        flipBtn.title = `Flip to ${r.back_face}`;
+        flipBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          inner.classList.toggle('flipped');
+          flipBtn.title = inner.classList.contains('flipped')
+            ? `Flip to ${r.name}` : `Flip to ${r.back_face}`;
+        });
+        card.appendChild(flipBtn);
+      } else {
+        // Standard single-face card
+        const img = document.createElement('img');
+        img.alt = r.name;
+        img.loading = 'lazy';
+        lazyImg(img, SCRYFALL_IMG(r.name));
+        card.appendChild(img);
+      }
 
       // Reasons overlay (click to toggle)
       const reasons = document.createElement('div');
@@ -394,7 +519,6 @@ async function main() {
         reasons.classList.toggle('visible');
       });
 
-      card.appendChild(img);
       card.appendChild(badge);
       card.appendChild(reasons);
       gridEl.appendChild(card);
