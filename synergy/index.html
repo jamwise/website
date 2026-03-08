@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synergize — MTG Synergy Finder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+  }
+  header h1 {
+    font-size: 2rem;
+    color: #c9a227;
+    margin-bottom: 0.5rem;
+  }
+  header p { color: #888; font-size: 0.9rem; }
+  #status {
+    text-align: center;
+    padding: 1rem;
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+  #status.error { color: #e74c3c; }
+  #status.ready { color: #2ecc71; }
+  .search-area {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    position: relative;
+  }
+  #card-input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    font-size: 1.1rem;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #16213e;
+    color: #e0e0e0;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #card-input:focus { border-color: #c9a227; }
+  #card-input:disabled { opacity: 0.5; }
+  #autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 1rem;
+    right: 1rem;
+    background: #16213e;
+    border: 1px solid #333;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+  }
+  #autocomplete div {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  #autocomplete div:hover, #autocomplete div.selected {
+    background: #1f3460;
+    color: #c9a227;
+  }
+  .controls {
+    max-width: 600px;
+    margin: 0.5rem auto;
+    padding: 0 1rem;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+  }
+  .controls label { font-size: 0.85rem; color: #888; }
+  .controls select, .controls input[type="checkbox"] {
+    background: #16213e;
+    color: #e0e0e0;
+    border: 1px solid #333;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+  }
+  #results-info {
+    text-align: center;
+    padding: 0.5rem 1rem;
+    color: #888;
+    font-size: 0.85rem;
+  }
+  #card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .card {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #16213e;
+    transition: transform 0.15s;
+    cursor: pointer;
+  }
+  .card:hover { transform: scale(1.05); z-index: 1; }
+  .card img {
+    width: 100%;
+    display: block;
+    border-radius: 12px;
+  }
+  .card .card-weight {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(0,0,0,0.8);
+    color: #c9a227;
+    font-weight: bold;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+  .card .card-name-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    padding: 2rem 0.5rem 0.5rem;
+    font-size: 0.75rem;
+    display: none;
+  }
+  .card:hover .card-name-overlay { display: block; }
+  .card .card-reasons {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.9);
+    padding: 1rem;
+    font-size: 0.7rem;
+    overflow-y: auto;
+    border-radius: 12px;
+    color: #ccc;
+  }
+  .card .card-reasons.visible { display: block; }
+  .card .card-reasons h4 { color: #c9a227; margin-bottom: 0.5rem; }
+  .card .card-reasons ul { list-style: none; }
+  .card .card-reasons li { margin-bottom: 0.2rem; color: #aaa; }
+  .card .card-reasons li::before { content: "- "; color: #666; }
+  .loading-placeholder {
+    width: 100%;
+    aspect-ratio: 488/680;
+    background: #222;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Synergize</h1>
+  <p>Find the best synergy cards for your MTG Commander deck</p>
+</header>
+<nav style="text-align:center;padding:0.5rem;font-size:0.85rem"><b>Card Synergy Finder</b> | <a href="deck.html" style="color:#c9a227;text-decoration:none">Deck Builder</a></nav>
+
+<div id="status">Loading graph data...</div>
+
+<div class="search-area">
+  <input type="text" id="card-input" placeholder="Type a card name..." disabled autocomplete="off">
+  <div id="autocomplete"></div>
+</div>
+
+<div class="controls">
+  <label>Show
+    <select id="top-n">
+      <option value="50">50</option>
+      <option value="100" selected>100</option>
+      <option value="150">150</option>
+      <option value="200">200</option>
+    </select>
+    cards
+  </label>
+  <label>
+    <input type="checkbox" id="as-commander" checked>
+    Use as commander (demand boost)
+  </label>
+</div>
+
+<div id="results-info"></div>
+<div id="card-grid"></div>
+
+<script type="module">
+import init, { load_graph, graph_loaded, num_nodes, get_neighbors, search_cards } from './pkg/synergize.js';
+
+const SCRYFALL_IMG = name =>
+  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal`;
+
+let selectedIdx = -1;
+let autocompleteItems = [];
+
+async function main() {
+  const statusEl = document.getElementById('status');
+  const inputEl = document.getElementById('card-input');
+  const acEl = document.getElementById('autocomplete');
+  const gridEl = document.getElementById('card-grid');
+  const infoEl = document.getElementById('results-info');
+  const topNEl = document.getElementById('top-n');
+  const asCommanderEl = document.getElementById('as-commander');
+
+  // Init WASM
+  statusEl.textContent = 'Initializing WASM...';
+  await init();
+
+  // Fetch graph binary
+  statusEl.textContent = 'Downloading graph data (this may take a moment)...';
+  let response;
+  try {
+    response = await fetch('synergize.bin');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  } catch (e) {
+    statusEl.textContent = `Failed to load graph: ${e.message}`;
+    statusEl.className = 'error';
+    return;
+  }
+
+  statusEl.textContent = 'Reading graph data...';
+  const arrayBuf = await response.arrayBuffer();
+  const data = new Uint8Array(arrayBuf);
+
+  statusEl.textContent = `Loading graph (${(data.length / 1048576).toFixed(1)} MB)...`;
+  try {
+    load_graph(data);
+  } catch (e) {
+    statusEl.textContent = `Failed to parse graph: ${e}`;
+    statusEl.className = 'error';
+    return;
+  }
+
+  const n = num_nodes();
+  statusEl.textContent = `Ready! ${n.toLocaleString()} cards loaded.`;
+  statusEl.className = 'ready';
+  inputEl.disabled = false;
+  inputEl.focus();
+
+  // Autocomplete
+  let acTimeout;
+  inputEl.addEventListener('input', () => {
+    clearTimeout(acTimeout);
+    selectedIdx = -1;
+    const val = inputEl.value.trim();
+    if (val.length < 2) {
+      acEl.style.display = 'none';
+      return;
+    }
+    acTimeout = setTimeout(() => {
+      const json = search_cards(val, 15);
+      autocompleteItems = JSON.parse(json);
+      renderAutocomplete();
+    }, 100);
+  });
+
+  function renderAutocomplete() {
+    if (autocompleteItems.length === 0) {
+      acEl.style.display = 'none';
+      return;
+    }
+    acEl.innerHTML = '';
+    autocompleteItems.forEach((name, i) => {
+      const div = document.createElement('div');
+      div.textContent = name;
+      if (i === selectedIdx) div.classList.add('selected');
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectCard(name);
+      });
+      acEl.appendChild(div);
+    });
+    acEl.style.display = 'block';
+  }
+
+  inputEl.addEventListener('keydown', (e) => {
+    if (acEl.style.display === 'none') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        doSearch(inputEl.value.trim());
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIdx = Math.min(selectedIdx + 1, autocompleteItems.length - 1);
+      renderAutocomplete();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIdx = Math.max(selectedIdx - 1, -1);
+      renderAutocomplete();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIdx >= 0 && selectedIdx < autocompleteItems.length) {
+        selectCard(autocompleteItems[selectedIdx]);
+      } else {
+        doSearch(inputEl.value.trim());
+      }
+    } else if (e.key === 'Escape') {
+      acEl.style.display = 'none';
+    }
+  });
+
+  inputEl.addEventListener('blur', () => {
+    setTimeout(() => { acEl.style.display = 'none'; }, 200);
+  });
+
+  function selectCard(name) {
+    inputEl.value = name;
+    acEl.style.display = 'none';
+    doSearch(name);
+  }
+
+  // Re-search when controls change
+  topNEl.addEventListener('change', () => {
+    if (inputEl.value.trim()) doSearch(inputEl.value.trim());
+  });
+  asCommanderEl.addEventListener('change', () => {
+    if (inputEl.value.trim()) doSearch(inputEl.value.trim());
+  });
+
+  function doSearch(cardName) {
+    if (!cardName) return;
+    const topN = parseInt(topNEl.value);
+    const commander = asCommanderEl.checked ? cardName : null;
+
+    const t0 = performance.now();
+    const json = get_neighbors(cardName, topN, commander);
+    const elapsed = (performance.now() - t0).toFixed(1);
+    const results = JSON.parse(json);
+
+    if (results.length === 0) {
+      infoEl.textContent = `No results for "${cardName}" (card not found or no synergies)`;
+      gridEl.innerHTML = '';
+      return;
+    }
+
+    infoEl.textContent = `Top ${results.length} synergies for "${cardName}" (${elapsed}ms)`;
+    renderResults(results);
+  }
+
+  function renderResults(results) {
+    gridEl.innerHTML = '';
+    for (const r of results) {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      // Weight badge
+      const badge = document.createElement('div');
+      badge.className = 'card-weight';
+      badge.textContent = r.weight;
+
+      // Image (lazy-ish via Scryfall)
+      const img = document.createElement('img');
+      img.alt = r.name;
+      img.loading = 'lazy';
+      img.src = SCRYFALL_IMG(r.name);
+      img.onerror = () => {
+        // Replace with placeholder if image not found
+        const ph = document.createElement('div');
+        ph.className = 'loading-placeholder';
+        ph.textContent = r.name;
+        img.replaceWith(ph);
+      };
+
+      // Reasons overlay (click to toggle)
+      const reasons = document.createElement('div');
+      reasons.className = 'card-reasons';
+      reasons.innerHTML = `<h4>${escapeHtml(r.name)} (${r.weight})</h4><ul>${
+        r.reasons.map(reason => `<li>${escapeHtml(reason)}</li>`).join('')
+      }</ul>`;
+
+      card.addEventListener('click', () => {
+        reasons.classList.toggle('visible');
+      });
+
+      card.appendChild(img);
+      card.appendChild(badge);
+      card.appendChild(reasons);
+      gridEl.appendChild(card);
+    }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+}
+
+main().catch(e => {
+  document.getElementById('status').textContent = `Error: ${e}`;
+  document.getElementById('status').className = 'error';
+  console.error(e);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synergize — Deck Builder</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 2rem 1rem 0.5rem;
+  }
+  header h1 { font-size: 2rem; color: #c9a227; margin-bottom: 0.3rem; }
+  header p { color: #888; font-size: 0.9rem; }
+  nav {
+    text-align: center;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+  nav a { color: #c9a227; text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  #status {
+    text-align: center;
+    padding: 0.5rem 1rem;
+    color: #aaa;
+    font-size: 0.9rem;
+  }
+  #status.error { color: #e74c3c; }
+  #status.ready { color: #2ecc71; }
+
+  .top-area {
+    display: flex;
+    gap: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .search-panel {
+    flex: 0 0 340px;
+  }
+  .search-panel h3 { color: #c9a227; margin-bottom: 0.5rem; font-size: 0.95rem; }
+  .search-area {
+    position: relative;
+  }
+  #card-input {
+    width: 100%;
+    padding: 0.7rem 0.8rem;
+    font-size: 1rem;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #16213e;
+    color: #e0e0e0;
+    outline: none;
+  }
+  #card-input:focus { border-color: #c9a227; }
+  #card-input:disabled { opacity: 0.5; }
+  #autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #16213e;
+    border: 1px solid #333;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+  }
+  #autocomplete div {
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  #autocomplete div:hover, #autocomplete div.selected {
+    background: #1f3460;
+    color: #c9a227;
+  }
+
+  .sliders-panel {
+    flex: 1 1 400px;
+    max-width: 500px;
+  }
+  .sliders-panel h3 { color: #c9a227; margin-bottom: 0.5rem; font-size: 0.95rem; }
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+  .slider-label {
+    width: 90px;
+    font-size: 0.85rem;
+    color: #aaa;
+    text-align: right;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    accent-color: #c9a227;
+    height: 6px;
+  }
+  .slider-value {
+    width: 45px;
+    font-size: 0.85rem;
+    color: #e0e0e0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .slider-count {
+    width: 35px;
+    font-size: 0.75rem;
+    color: #666;
+    text-align: left;
+  }
+
+  #build-btn {
+    margin-top: 0.8rem;
+    padding: 0.6rem 1.5rem;
+    background: #c9a227;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #build-btn:disabled { opacity: 0.4; cursor: default; }
+  #build-btn:hover:not(:disabled) { background: #d4af37; }
+
+  #results-info {
+    text-align: center;
+    padding: 0.5rem 1rem;
+    color: #888;
+    font-size: 0.85rem;
+  }
+
+  .role-section {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem 0.5rem;
+  }
+  .role-section h3 {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 0.5rem;
+    text-transform: capitalize;
+  }
+  .role-section h3 span { color: #c9a227; }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #16213e;
+    transition: transform 0.15s;
+    cursor: pointer;
+  }
+  .card:hover { transform: scale(1.05); z-index: 1; }
+  .card img {
+    width: 100%;
+    display: block;
+    border-radius: 10px;
+  }
+  .card .card-weight {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.8);
+    color: #c9a227;
+    font-weight: bold;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .card .card-count {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    background: rgba(0,0,0,0.85);
+    color: #e0e0e0;
+    font-weight: bold;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+  .card-flip-container {
+    perspective: 600px;
+    width: 100%;
+    aspect-ratio: 488/680;
+  }
+  .card-flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+  }
+  .card-flip-inner.flipped {
+    transform: rotateY(180deg);
+  }
+  .card-flip-front, .card-flip-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .card-flip-back {
+    transform: rotateY(180deg);
+  }
+  .card-flip-front img, .card-flip-back img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 10px;
+  }
+  .card-flip-btn {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    padding: 1px 8px;
+    cursor: pointer;
+    z-index: 2;
+    line-height: 1.4;
+  }
+  .card-flip-btn:hover {
+    background: rgba(60,60,60,0.95);
+    color: #c9a227;
+  }
+  .filter-checks {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .filter-checks label {
+    font-size: 0.8rem;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .filter-checks input[type="checkbox"] {
+    accent-color: #c9a227;
+  }
+  .loading-placeholder {
+    width: 100%;
+    aspect-ratio: 488/680;
+    background: #222;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-size: 0.7rem;
+    text-align: center;
+    padding: 0.5rem;
+  }
+
+  .role-color-land { border-left: 3px solid #8B7355; }
+  .role-color-ramp { border-left: 3px solid #4CAF50; }
+  .role-color-draw { border-left: 3px solid #2196F3; }
+  .role-color-removal { border-left: 3px solid #F44336; }
+  .role-color-wipe { border-left: 3px solid #FF5722; }
+  .role-color-protection { border-left: 3px solid #9C27B0; }
+  .role-color-synergy { border-left: 3px solid #c9a227; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Synergize — Deck Builder</h1>
+  <p>Build a synergy-optimized 99-card Commander deck</p>
+</header>
+<nav><a href="index.html">Card Synergy Finder</a> | <b>Deck Builder</b></nav>
+
+<div id="status">Loading graph data...</div>
+
+<div class="top-area">
+  <div class="search-panel">
+    <h3>Commander</h3>
+    <div class="search-area">
+      <input type="text" id="card-input" placeholder="Type a commander name..." disabled autocomplete="off">
+      <div id="autocomplete"></div>
+    </div>
+    <div class="filter-checks">
+      <label><input type="checkbox" id="include-alchemy"> Alchemy / Digital</label>
+      <label><input type="checkbox" id="include-unset"> Un-set / Acorn</label>
+    </div>
+  </div>
+
+  <div class="sliders-panel">
+    <h3>Deck Composition</h3>
+    <div id="sliders"></div>
+    <h3 style="margin-top:0.8rem">Mana Curve</h3>
+    <div class="slider-row">
+      <span class="slider-label" style="color:#e0e0e0">Target CMC</span>
+      <input type="range" id="curve-slider" min="1.5" max="5.0" step="0.1" value="3.0" style="flex:1;accent-color:#c9a227;height:6px">
+      <span class="slider-value" id="curve-value">3.0</span>
+      <span class="slider-count" id="curve-hint" style="width:80px;color:#666">balanced</span>
+    </div>
+    <button id="build-btn" disabled>Build Deck</button>
+  </div>
+</div>
+
+<div id="results-info"></div>
+<div id="deck-output"></div>
+
+<script type="module">
+import init, { load_graph, graph_loaded, num_nodes, search_cards, build_deck } from './pkg/synergize.js';
+
+const SCRYFALL_IMG = (name, face) =>
+  `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(name)}&format=image&version=normal${face ? '&face=' + face : ''}`;
+
+const ROLES = [
+  { key: 'land',       label: 'Lands',      default: 37, color: '#8B7355' },
+  { key: 'ramp',       label: 'Ramp',       default: 10, color: '#4CAF50' },
+  { key: 'draw',       label: 'Card Draw',  default: 8,  color: '#2196F3' },
+  { key: 'removal',    label: 'Removal',    default: 7,  color: '#F44336' },
+  { key: 'wipe',       label: 'Board Wipes',default: 3,  color: '#FF5722' },
+  { key: 'protection', label: 'Protection', default: 3,  color: '#9C27B0' },
+  { key: 'synergy',    label: 'Synergy',    default: 32, color: '#c9a227' },
+];
+
+let sliderState = {};
+let dragSnapshot = null; // slider values at drag start
+let dragKey = null;
+let selectedCommander = null;
+let selectedIdx = -1;
+let autocompleteItems = [];
+
+async function main() {
+  const statusEl = document.getElementById('status');
+  const inputEl = document.getElementById('card-input');
+  const acEl = document.getElementById('autocomplete');
+  const buildBtn = document.getElementById('build-btn');
+  const infoEl = document.getElementById('results-info');
+  const deckOutput = document.getElementById('deck-output');
+
+  await init();
+
+  statusEl.textContent = 'Downloading graph data...';
+  let response;
+  try {
+    response = await fetch('synergize.bin');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  } catch (e) {
+    statusEl.textContent = `Failed to load graph: ${e.message}`;
+    statusEl.className = 'error';
+    return;
+  }
+
+  statusEl.textContent = 'Reading graph data...';
+  const data = new Uint8Array(await response.arrayBuffer());
+  statusEl.textContent = `Loading graph (${(data.length / 1048576).toFixed(1)} MB)...`;
+
+  try {
+    load_graph(data);
+  } catch (e) {
+    statusEl.textContent = `Failed to parse graph: ${e}`;
+    statusEl.className = 'error';
+    return;
+  }
+
+  const n = num_nodes();
+  statusEl.textContent = `Ready! ${n.toLocaleString()} cards loaded.`;
+  statusEl.className = 'ready';
+  inputEl.disabled = false;
+  inputEl.focus();
+
+  // Build sliders
+  buildSliders();
+
+  // Curve slider
+  const curveSlider = document.getElementById('curve-slider');
+  const curveValue = document.getElementById('curve-value');
+  const curveHint = document.getElementById('curve-hint');
+  curveSlider.addEventListener('input', () => {
+    const v = parseFloat(curveSlider.value);
+    curveValue.textContent = v.toFixed(1);
+    curveHint.textContent = v <= 2.0 ? 'aggressive' : v <= 2.8 ? 'fast' : v <= 3.5 ? 'balanced' : v <= 4.2 ? 'midrange' : 'battlecruiser';
+  });
+
+  // Autocomplete
+  let acTimeout;
+  inputEl.addEventListener('input', () => {
+    clearTimeout(acTimeout);
+    selectedIdx = -1;
+    const val = inputEl.value.trim();
+    if (val.length < 2) { acEl.style.display = 'none'; return; }
+    acTimeout = setTimeout(() => {
+      autocompleteItems = JSON.parse(search_cards(val, 15));
+      renderAutocomplete();
+    }, 100);
+  });
+
+  function renderAutocomplete() {
+    if (autocompleteItems.length === 0) { acEl.style.display = 'none'; return; }
+    acEl.innerHTML = '';
+    autocompleteItems.forEach((name, i) => {
+      const div = document.createElement('div');
+      div.textContent = name;
+      if (i === selectedIdx) div.classList.add('selected');
+      div.addEventListener('mousedown', (e) => { e.preventDefault(); selectCard(name); });
+      acEl.appendChild(div);
+    });
+    acEl.style.display = 'block';
+  }
+
+  inputEl.addEventListener('keydown', (e) => {
+    if (acEl.style.display === 'none') {
+      if (e.key === 'Enter') { e.preventDefault(); selectCard(inputEl.value.trim()); }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIdx = Math.min(selectedIdx + 1, autocompleteItems.length - 1);
+      renderAutocomplete();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIdx = Math.max(selectedIdx - 1, -1);
+      renderAutocomplete();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIdx >= 0) selectCard(autocompleteItems[selectedIdx]);
+      else selectCard(inputEl.value.trim());
+    } else if (e.key === 'Escape') {
+      acEl.style.display = 'none';
+    }
+  });
+
+  inputEl.addEventListener('blur', () => {
+    setTimeout(() => { acEl.style.display = 'none'; }, 200);
+  });
+
+  function selectCard(name) {
+    inputEl.value = name;
+    acEl.style.display = 'none';
+    selectedCommander = name;
+    buildBtn.disabled = false;
+  }
+
+  buildBtn.addEventListener('click', () => {
+    if (!selectedCommander) return;
+    doBuild();
+  });
+
+  function doBuild() {
+    const pcts = {};
+    for (const role of ROLES) {
+      pcts[role.key] = Math.round(sliderState[role.key]);
+    }
+
+    const curveTarget = parseFloat(document.getElementById('curve-slider').value);
+    const includeAlchemy = document.getElementById('include-alchemy').checked;
+    const includeUnset = document.getElementById('include-unset').checked;
+    const t0 = performance.now();
+    const json = build_deck(selectedCommander, JSON.stringify(pcts), curveTarget, includeAlchemy, includeUnset);
+    const elapsed = (performance.now() - t0).toFixed(1);
+    const deck = JSON.parse(json);
+
+    if (deck.length === 0) {
+      infoEl.textContent = `No deck could be built for "${selectedCommander}"`;
+      deckOutput.innerHTML = '';
+      return;
+    }
+
+    const nonlandCards = deck.filter(c => c.role !== 'land');
+    const avgCmc = nonlandCards.length > 0
+      ? (nonlandCards.reduce((sum, c) => sum + (c.cmc || 0), 0) / nonlandCards.length).toFixed(2)
+      : '0.00';
+    infoEl.textContent = `${deck.length} cards selected for "${selectedCommander}" — avg CMC ${avgCmc} (${elapsed}ms)`;
+    renderDeck(deck);
+  }
+
+  function renderDeck(deck) {
+    deckOutput.innerHTML = '';
+
+    // Group by role
+    const groups = {};
+    const roleOrder = ['land', 'ramp', 'draw', 'removal', 'wipe', 'protection', 'synergy'];
+    for (const r of roleOrder) groups[r] = [];
+    for (const card of deck) {
+      const role = card.role || 'synergy';
+      if (!groups[role]) groups[role] = [];
+      groups[role].push(card);
+    }
+
+    for (const role of roleOrder) {
+      const cards = groups[role];
+      if (!cards || cards.length === 0) continue;
+
+      // Deduplicate: count occurrences of each card name
+      const countMap = new Map();
+      const uniqueCards = [];
+      for (const card of cards) {
+        if (countMap.has(card.name)) {
+          countMap.set(card.name, countMap.get(card.name) + 1);
+        } else {
+          countMap.set(card.name, 1);
+          uniqueCards.push(card);
+        }
+      }
+
+      const totalCount = cards.length;
+
+      const section = document.createElement('div');
+      section.className = 'role-section';
+
+      const roleInfo = ROLES.find(r => r.key === role);
+      const label = roleInfo ? roleInfo.label : 'Synergy';
+      const h3 = document.createElement('h3');
+      h3.innerHTML = `${label} <span>(${totalCount})</span>`;
+      section.appendChild(h3);
+
+      const grid = document.createElement('div');
+      grid.className = 'card-grid';
+
+      for (const card of uniqueCards) {
+        const count = countMap.get(card.name);
+        const hasBack = !!card.back_face;
+        const el = document.createElement('div');
+        el.className = `card role-color-${role}`;
+
+        if (hasBack) {
+          // Flip card with 3D transform
+          const container = document.createElement('div');
+          container.className = 'card-flip-container';
+          const inner = document.createElement('div');
+          inner.className = 'card-flip-inner';
+
+          const front = document.createElement('div');
+          front.className = 'card-flip-front';
+          const frontImg = document.createElement('img');
+          frontImg.alt = card.name;
+          frontImg.loading = 'lazy';
+          frontImg.src = SCRYFALL_IMG(card.name, 'front');
+          frontImg.onerror = () => {
+            const ph = document.createElement('div');
+            ph.className = 'loading-placeholder';
+            ph.textContent = card.name;
+            frontImg.replaceWith(ph);
+          };
+          front.appendChild(frontImg);
+
+          const back = document.createElement('div');
+          back.className = 'card-flip-back';
+          const backImg = document.createElement('img');
+          backImg.alt = card.back_face;
+          backImg.loading = 'lazy';
+          backImg.src = SCRYFALL_IMG(card.name, 'back');
+          backImg.onerror = () => {
+            const ph = document.createElement('div');
+            ph.className = 'loading-placeholder';
+            ph.textContent = card.back_face;
+            backImg.replaceWith(ph);
+          };
+          back.appendChild(backImg);
+
+          inner.appendChild(front);
+          inner.appendChild(back);
+          container.appendChild(inner);
+          el.appendChild(container);
+
+          const flipBtn = document.createElement('button');
+          flipBtn.className = 'card-flip-btn';
+          flipBtn.textContent = '\u21BB';
+          flipBtn.title = `Flip to ${card.back_face}`;
+          flipBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            inner.classList.toggle('flipped');
+            flipBtn.title = inner.classList.contains('flipped')
+              ? `Flip to ${card.name}` : `Flip to ${card.back_face}`;
+          });
+          el.appendChild(flipBtn);
+        } else {
+          // Standard single-face card
+          const img = document.createElement('img');
+          img.alt = card.name;
+          img.loading = 'lazy';
+          img.src = SCRYFALL_IMG(card.name);
+          img.onerror = () => {
+            const ph = document.createElement('div');
+            ph.className = 'loading-placeholder';
+            ph.textContent = card.name;
+            img.replaceWith(ph);
+          };
+          el.appendChild(img);
+        }
+
+        const badge = document.createElement('div');
+        badge.className = 'card-weight';
+        badge.textContent = card.weight;
+        el.appendChild(badge);
+
+        if (count > 1) {
+          const countBadge = document.createElement('div');
+          countBadge.className = 'card-count';
+          countBadge.textContent = `\u00d7 ${count}`;
+          el.appendChild(countBadge);
+        }
+
+        grid.appendChild(el);
+      }
+
+      section.appendChild(grid);
+      deckOutput.appendChild(section);
+    }
+  }
+
+  function buildSliders() {
+    const container = document.getElementById('sliders');
+    container.innerHTML = '';
+
+    for (const role of ROLES) {
+      sliderState[role.key] = role.default;
+    }
+
+    for (const role of ROLES) {
+      const row = document.createElement('div');
+      row.className = 'slider-row';
+
+      const label = document.createElement('span');
+      label.className = 'slider-label';
+      label.textContent = role.label;
+      label.style.color = role.color;
+
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = '0';
+      slider.max = '80';
+      slider.step = 'any';
+      slider.value = role.default;
+      slider.dataset.role = role.key;
+
+      const valSpan = document.createElement('span');
+      valSpan.className = 'slider-value';
+
+      const countSpan = document.createElement('span');
+      countSpan.className = 'slider-count';
+
+      slider.addEventListener('pointerdown', () => {
+        dragSnapshot = { ...sliderState };
+        dragKey = role.key;
+      });
+      slider.addEventListener('input', () => {
+        handleSliderChange(role.key, parseFloat(slider.value));
+      });
+
+      row.appendChild(label);
+      row.appendChild(slider);
+      row.appendChild(valSpan);
+      row.appendChild(countSpan);
+      container.appendChild(row);
+    }
+
+    updateSliderDisplay();
+  }
+
+  function handleSliderChange(changedKey, newValue) {
+    const snap = (dragSnapshot && dragKey === changedKey) ? dragSnapshot : sliderState;
+    const delta = newValue - snap[changedKey];
+    if (delta === 0) {
+      for (const r of ROLES) sliderState[r.key] = snap[r.key];
+      updateSliderDisplay();
+      return;
+    }
+
+    const otherKeys = ROLES.filter(r => r.key !== changedKey).map(r => r.key);
+
+    // Start from snapshot values for all others
+    for (const k of otherKeys) sliderState[k] = snap[k];
+    sliderState[changedKey] = newValue;
+
+    // Distribute -delta equally among others as floats, iterating to handle clamping at 0
+    let toDistribute = -delta;
+    let eligible = [...otherKeys];
+
+    while (Math.abs(toDistribute) > 0.001 && eligible.length > 0) {
+      const perSlider = toDistribute / eligible.length;
+      let clamped = false;
+
+      for (const k of eligible) {
+        const newVal = sliderState[k] + perSlider;
+        if (newVal < 0) {
+          sliderState[k] = 0;
+          clamped = true;
+        } else {
+          sliderState[k] = newVal;
+        }
+      }
+
+      if (!clamped) break;
+      const currentTotal = ROLES.reduce((sum, r) => sum + sliderState[r.key], 0);
+      toDistribute = 100 - currentTotal;
+      eligible = otherKeys.filter(k => sliderState[k] > 0);
+    }
+
+    updateSliderDisplay();
+  }
+
+  function updateSliderDisplay() {
+    for (const role of ROLES) {
+      const slider = document.querySelector(`input[data-role="${role.key}"]`);
+      if (slider) {
+        slider.value = sliderState[role.key];
+        slider.nextElementSibling.textContent = Math.round(sliderState[role.key]) + '%';
+        const count = Math.round(99 * sliderState[role.key] / 100);
+        slider.nextElementSibling.nextElementSibling.textContent = `(${count})`;
+      }
+    }
+  }
+}
+
+main().catch(e => {
+  document.getElementById('status').textContent = `Error: ${e}`;
+  document.getElementById('status').className = 'error';
+  console.error(e);
+});
+</script>
+
+</body>
+</html>
