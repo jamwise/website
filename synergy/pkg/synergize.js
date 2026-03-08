@@ -39,10 +39,11 @@ export function build_deck(commander, role_pcts_json, curve_target, include_alch
  * Query neighbors for a card. Returns JSON: [{"name": "...", "weight": N, "reasons": [...]}]
  * @param {string} card_name
  * @param {number} top_n
- * @param {string | null} [commander]
+ * @param {string | null | undefined} commander
+ * @param {number} max_cmc
  * @returns {string}
  */
-export function get_neighbors(card_name, top_n, commander) {
+export function get_neighbors(card_name, top_n, commander, max_cmc) {
     let deferred3_0;
     let deferred3_1;
     try {
@@ -51,7 +52,7 @@ export function get_neighbors(card_name, top_n, commander) {
         const len0 = WASM_VECTOR_LEN;
         var ptr1 = isLikeNone(commander) ? 0 : passStringToWasm0(commander, wasm.__wbindgen_export, wasm.__wbindgen_export2);
         var len1 = WASM_VECTOR_LEN;
-        wasm.get_neighbors(retptr, ptr0, len0, top_n, ptr1, len1);
+        wasm.get_neighbors(retptr, ptr0, len0, top_n, ptr1, len1, max_cmc);
         var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         deferred3_0 = r0;

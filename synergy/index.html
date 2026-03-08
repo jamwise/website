@@ -451,17 +451,12 @@ async function main() {
     const topN = parseInt(topNEl.value);
     const commander = asCommanderEl.checked ? cardName : null;
 
-    const maxCmc = maxCmcEl.value !== '' ? parseInt(maxCmcEl.value) : null;
-    const fetchN = maxCmc !== null ? topN * 3 : topN;
+    const maxCmc = maxCmcEl.value !== '' ? parseInt(maxCmcEl.value) : -1;
 
     const t0 = performance.now();
-    const json = get_neighbors(cardName, fetchN, commander);
+    const json = get_neighbors(cardName, topN, commander, maxCmc);
     const elapsed = (performance.now() - t0).toFixed(1);
     let results = JSON.parse(json);
-
-    if (maxCmc !== null) {
-      results = results.filter(r => r.cmc <= maxCmc).slice(0, topN);
-    }
 
     if (results.length === 0) {
       infoEl.textContent = `No results for "${cardName}" (card not found or no synergies)`;
@@ -469,7 +464,7 @@ async function main() {
       return;
     }
 
-    const cmcLabel = maxCmc !== null ? ` (CMC ≤ ${maxCmc})` : '';
+    const cmcLabel = maxCmc >= 0 ? ` (CMC ≤ ${maxCmc})` : '';
     infoEl.textContent = `Top ${results.length} synergies for "${cardName}"${cmcLabel} (${elapsed}ms)`;
 
     // Prefetch image URLs from Scryfall (2 API calls max for 100 cards)
