@@ -39,7 +39,6 @@
             }
             .app {
                 width: 100%;
-                max-width: 420px;
                 height: 100%;
                 display: flex;
                 flex-direction: column;
@@ -290,12 +289,13 @@
                 el.innerHTML = "";
 
                 const area = document.querySelector(".grid-area");
-                const availW = area.clientWidth - 8;
-                const availH = area.clientHeight - 8;
+                const margin = 20;
+                const availW = area.clientWidth - margin * 2;
+                const availH = area.clientHeight - margin * 2;
                 const gap = 4;
                 const szFromW = Math.floor((availW - (W - 1) * gap) / W);
                 const szFromH = Math.floor((availH - (H - 1) * gap) / H);
-                const sz = Math.min(szFromW, szFromH, 68);
+                const sz = Math.min(szFromW, szFromH);
 
                 el.style.gridTemplateColumns = `repeat(${W},${sz}px)`;
                 for (let r = 0; r < H; r++)
