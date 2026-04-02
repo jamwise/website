@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <title>Chroma</title>
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap");
+
+            *,
+            *::before,
+            *::after {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            :root {
+                --c0: #3e72c4;
+                --c1: #2a9968;
+                --c2: #c98b18;
+                --c3: #c24040;
+                --c4: #8b5cc4;
+                --c5: #2a8a8a;
+                --bg: #f4f1ec;
+                --surface: #ffffff;
+                --ink: #1a1a1a;
+                --muted: #8a8580;
+                --border: #e2ddd6;
+                --cell-empty: #e8e4dc;
+                --cell-hover: #dbd6cc;
+                --radius: 10px;
+            }
+            html, body { height: 100%; overflow: hidden; }
+            body {
+                font-family: "DM Mono", monospace;
+                background: var(--bg);
+                display: flex;
+                justify-content: center;
+            }
+            .app {
+                width: 100%;
+                max-width: 420px;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                padding: env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px);
+            }
+
+            /* ── Top bar ─────────────────────────── */
+            .top-bar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                padding: 8px 0;
+                flex-shrink: 0;
+            }
+            select, .btn {
+                font-family: "DM Mono", monospace;
+                font-size: 14px;
+                padding: 10px 16px;
+                border-radius: 9px;
+                border: 1.5px solid var(--border);
+                background: var(--surface);
+                color: var(--ink);
+                cursor: pointer;
+                letter-spacing: 0.02em;
+            }
+            .btn-dark { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+            /* ── Grid area (expands to fill) ─────── */
+            .grid-area {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                min-height: 0;
+            }
+            .grid { display: grid; gap: 4px; position: relative; }
+            .channel {
+                position: absolute;
+                border-radius: 2px;
+                pointer-events: none;
+                opacity: 0.75;
+                display: none;
+            }
+            .cell {
+                border-radius: 8px; cursor: pointer;
+                transition: transform 0.1s, filter 0.12s;
+                position: relative; -webkit-tap-highlight-color: transparent; user-select: none;
+            }
+            .cell:not(.is-clue):hover { filter: brightness(1.07); }
+            .cell:active { transform: scale(0.88); }
+            .cell.is-empty { background: var(--cell-empty); }
+            .cell.is-empty:not(.is-clue):hover { background: var(--cell-hover); }
+            .cell.c0 { background: var(--c0); }
+            .cell.c1 { background: var(--c1); }
+            .cell.c2 { background: var(--c2); }
+            .cell.c3 { background: var(--c3); }
+            .cell.c4 { background: var(--c4); }
+            .cell.c5 { background: var(--c5); }
+            .cell.is-clue { cursor: default; }
+            .cell.is-clue::after {
+                content: ""; position: absolute; inset: 4px; border-radius: 5px;
+                border: 2px solid rgba(255, 255, 255, 0.3); pointer-events: none;
+            }
+            .cell.is-error { animation: err-pulse 0.7s ease infinite alternate; }
+            @keyframes err-pulse {
+                from { box-shadow: 0 0 0 0 rgba(194, 64, 64, 0); }
+                to { box-shadow: 0 0 0 3px rgba(194, 64, 64, 0.7), 0 0 10px rgba(194, 64, 64, 0.25); }
+            }
+
+            /* ── Bottom palette ──────────────────── */
+            .palette-bar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 10px 0;
+                flex-shrink: 0;
+            }
+            .pal-btn {
+                width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
+                border: 3px solid transparent;
+                transition: transform 0.12s;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 14px; -webkit-tap-highlight-color: transparent; position: relative;
+            }
+            .pal-btn::after {
+                content: ""; position: absolute; inset: -3px; border-radius: 50%;
+                border: 3px solid transparent; transition: border-color 0.15s;
+            }
+            .pal-btn.active::after { border-color: var(--ink); }
+            .pal-btn:active { transform: scale(0.85); }
+            .pal-erase { background: var(--cell-empty); border-color: var(--border); color: var(--muted); font-size: 13px; }
+            .pal-c0 { background: var(--c0); }
+            .pal-c1 { background: var(--c1); }
+            .pal-c2 { background: var(--c2); }
+            .pal-c3 { background: var(--c3); }
+            .pal-c4 { background: var(--c4); }
+            .pal-c5 { background: var(--c5); }
+
+            /* ── Overlays ────────────────────────── */
+            .overlay {
+                display: none; position: fixed; inset: 0;
+                background: rgba(244, 241, 236, 0.85); backdrop-filter: blur(4px);
+                align-items: center; justify-content: center; flex-direction: column; gap: 16px; z-index: 100;
+            }
+            .overlay.show { display: flex; }
+            .spinner {
+                width: 32px; height: 32px; border: 3px solid var(--border);
+                border-top-color: var(--c0); border-radius: 50%; animation: spin 0.8s linear infinite;
+            }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            .overlay-txt { font-size: 12px; color: var(--muted); }
+
+            .win-card {
+                background: var(--surface); border-radius: 16px;
+                padding: 32px 40px; text-align: center;
+                border: 1.5px solid var(--border);
+                box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            }
+            .win-title {
+                font-size: 24px; font-weight: 500; color: var(--ink);
+                margin-bottom: 6px; letter-spacing: -0.5px;
+            }
+            .win-sub { font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+            .win-actions { display: flex; gap: 8px; justify-content: center; }
+            .win-actions .btn { padding: 10px 20px; font-size: 12px; }
+
+            /* ── Debug ───────────────────────────── */
+            .debug-bar {
+                position: fixed; top: 4px; right: 4px; z-index: 50;
+                font-size: 10px; color: var(--muted);
+                display: flex; align-items: center; gap: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app">
+            <div class="top-bar">
+                <select id="lvl"></select>
+                <select id="diff">
+                    <option value="0">Easy</option>
+                    <option value="1" selected>Medium</option>
+                    <option value="2">Hard</option>
+                </select>
+                <button class="btn btn-dark" id="newBtn">New</button>
+            </div>
+
+            <div class="grid-area">
+                <div class="grid" id="grid"></div>
+            </div>
+
+            <div class="palette-bar" id="palette"></div>
+        </div>
+
+        <div class="overlay" id="genOverlay">
+            <div class="spinner"></div>
+            <div class="overlay-txt" id="genTxt">Generating puzzle...</div>
+        </div>
+
+        <div class="overlay" id="winOverlay">
+            <div class="win-card">
+                <div class="win-title">Solved</div>
+                <div class="win-sub" id="winSub"></div>
+                <div class="win-actions">
+                    <button class="btn" id="winClose">Close</button>
+                    <button class="btn btn-dark" id="winAgain">Play again</button>
+                </div>
+            </div>
+        </div>
+
+        <label class="debug-bar">
+            <input type="checkbox" id="reveal"> Reveal
+        </label>
+
+        <script type="module">
+            import init, { ChromaGame } from "./engine/pkg/chroma_engine.js";
+            await init();
+
+            const COLOR_NAMES = ["Blue", "Green", "Yellow", "Red", "Purple", "Teal"];
+            const COLOR_KEYS  = ["c0", "c1", "c2", "c3", "c4", "c5"];
+
+            const lvlSelect = document.getElementById("lvl");
+            const levelCount = ChromaGame.level_count();
+            for (let i = 1; i <= levelCount; i++) {
+                const info = ChromaGame.level_info(i);
+                const w = Math.floor(info / 10000);
+                const h = Math.floor((info % 10000) / 100);
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.textContent = `${w}×${h}`;
+                lvlSelect.appendChild(opt);
+            }
+
+            // Restore saved settings
+            const savedLvl = localStorage.getItem("chroma-level");
+            const savedDiff = localStorage.getItem("chroma-difficulty");
+            if (savedLvl && lvlSelect.querySelector(`option[value="${savedLvl}"]`)) lvlSelect.value = savedLvl;
+            if (savedDiff) document.getElementById("diff").value = savedDiff;
+
+            let game = null;
+            let sel = "x";
+
+            function render() {
+                const reveal = document.getElementById("reveal").checked;
+                document.querySelectorAll(".cell").forEach((el) => {
+                    const r = +el.dataset.r, c = +el.dataset.c;
+                    const col = reveal ? game.solution_cell(r, c) : game.cell(r, c);
+                    const isClue = game.is_clue(r, c);
+                    const isErr = !reveal && game.is_error(r, c);
+                    el.className = "cell" +
+                        (isClue && !reveal ? " is-clue" : "") +
+                        (isErr ? " is-error" : "") +
+                        (col < 0 ? " is-empty" : " c" + col);
+                });
+                document.querySelectorAll(".channel").forEach((ch) => {
+                    const r = +ch.dataset.r, c = +ch.dataset.c, dir = ch.dataset.dir;
+                    const col1 = reveal ? game.solution_cell(r, c) : game.cell(r, c);
+                    const col2 = dir === "h"
+                        ? (reveal ? game.solution_cell(r, c + 1) : game.cell(r, c + 1))
+                        : (reveal ? game.solution_cell(r + 1, c) : game.cell(r + 1, c));
+                    if (col1 >= 0 && col1 === col2) {
+                        ch.style.background = `var(--c${col1})`;
+                        ch.style.display = "block";
+                    } else {
+                        ch.style.display = "none";
+                    }
+                });
+                if (!reveal && game.is_solved()) {
+                    document.getElementById("winOverlay").classList.add("show");
+                }
+            }
+
+            function buildPalette() {
+                const nc = game.num_colors();
+                const pal = document.getElementById("palette");
+                pal.innerHTML = `<div class="pal-btn pal-erase" data-c="x">&cross;</div>`;
+                for (let i = 0; i < nc; i++) {
+                    pal.innerHTML += `<div class="pal-btn pal-${COLOR_KEYS[i]}" data-c="${i}"></div>`;
+                }
+                setColor("x");
+            }
+
+            function buildGrid() {
+                const W = game.width(), H = game.height();
+                const el = document.getElementById("grid");
+                el.innerHTML = "";
+
+                const area = document.querySelector(".grid-area");
+                const availW = area.clientWidth - 8;
+                const availH = area.clientHeight - 8;
+                const gap = 4;
+                const szFromW = Math.floor((availW - (W - 1) * gap) / W);
+                const szFromH = Math.floor((availH - (H - 1) * gap) / H);
+                const sz = Math.min(szFromW, szFromH, 68);
+
+                el.style.gridTemplateColumns = `repeat(${W},${sz}px)`;
+                for (let r = 0; r < H; r++)
+                    for (let c = 0; c < W; c++) {
+                        const d = document.createElement("div");
+                        d.className = "cell is-empty";
+                        d.style.width = sz + "px";
+                        d.style.height = sz + "px";
+                        d.dataset.r = r;
+                        d.dataset.c = c;
+                        d.addEventListener("click", () => tap(r, c));
+                        el.appendChild(d);
+                    }
+
+                const step = sz + gap;
+                const inset = Math.round(sz * 0.15);
+                for (let r = 0; r < H; r++)
+                    for (let c = 0; c < W - 1; c++) {
+                        const ch = document.createElement("div");
+                        ch.className = "channel";
+                        ch.dataset.r = r; ch.dataset.c = c; ch.dataset.dir = "h";
+                        ch.style.left = (c * step + sz) + "px";
+                        ch.style.top = (r * step + inset) + "px";
+                        ch.style.width = gap + "px";
+                        ch.style.height = (sz - inset * 2) + "px";
+                        el.appendChild(ch);
+                    }
+                for (let r = 0; r < H - 1; r++)
+                    for (let c = 0; c < W; c++) {
+                        const ch = document.createElement("div");
+                        ch.className = "channel";
+                        ch.dataset.r = r; ch.dataset.c = c; ch.dataset.dir = "v";
+                        ch.style.left = (c * step + inset) + "px";
+                        ch.style.top = (r * step + sz) + "px";
+                        ch.style.width = (sz - inset * 2) + "px";
+                        ch.style.height = gap + "px";
+                        el.appendChild(ch);
+                    }
+
+                document.getElementById("winSub").textContent = `All ${game.num_colors()} regions connected.`;
+                render();
+            }
+
+            let dragging = false;
+            let lastDragCell = null;
+
+            function placeAt(r, c) {
+                if (game.is_clue(r, c)) return;
+                game.place(r, c, sel === "x" ? -1 : +sel);
+                render();
+            }
+
+            function tap(r, c) {
+                placeAt(r, c);
+            }
+
+            function getCellFromPoint(x, y) {
+                const el = document.elementFromPoint(x, y);
+                if (el && el.classList.contains("cell") && el.dataset.r !== undefined) {
+                    return { r: +el.dataset.r, c: +el.dataset.c };
+                }
+                return null;
+            }
+
+            const gridEl = document.getElementById("grid");
+
+            gridEl.addEventListener("mousedown", (e) => {
+                const cell = getCellFromPoint(e.clientX, e.clientY);
+                if (cell) { dragging = true; lastDragCell = `${cell.r},${cell.c}`; placeAt(cell.r, cell.c); }
+            });
+            document.addEventListener("mousemove", (e) => {
+                if (!dragging) return;
+                const cell = getCellFromPoint(e.clientX, e.clientY);
+                if (cell) {
+                    const key = `${cell.r},${cell.c}`;
+                    if (key !== lastDragCell) { lastDragCell = key; placeAt(cell.r, cell.c); }
+                }
+            });
+            document.addEventListener("mouseup", () => { dragging = false; lastDragCell = null; });
+
+            gridEl.addEventListener("touchstart", (e) => {
+                const t = e.touches[0];
+                const cell = getCellFromPoint(t.clientX, t.clientY);
+                if (cell) { dragging = true; lastDragCell = `${cell.r},${cell.c}`; placeAt(cell.r, cell.c); e.preventDefault(); }
+            }, { passive: false });
+            gridEl.addEventListener("touchmove", (e) => {
+                if (!dragging) return;
+                e.preventDefault();
+                const t = e.touches[0];
+                const cell = getCellFromPoint(t.clientX, t.clientY);
+                if (cell) {
+                    const key = `${cell.r},${cell.c}`;
+                    if (key !== lastDragCell) { lastDragCell = key; placeAt(cell.r, cell.c); }
+                }
+            }, { passive: false });
+            gridEl.addEventListener("touchend", () => { dragging = false; lastDragCell = null; });
+
+            function setColor(c) {
+                sel = c;
+                document.querySelectorAll(".pal-btn").forEach((b) => b.classList.toggle("active", b.dataset.c === c));
+            }
+            document.getElementById("palette").addEventListener("click", (e) => {
+                const b = e.target.closest(".pal-btn");
+                if (b) setColor(b.dataset.c);
+            });
+
+            document.addEventListener("keydown", (e) => {
+                const nc = game ? game.num_colors() : 4;
+                const map = { e: "x", E: "x" };
+                for (let i = 1; i <= nc; i++) map[String(i)] = String(i - 1);
+                if (map[e.key] !== undefined) setColor(map[e.key]);
+                if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+                    e.preventDefault();
+                    if (game && game.undo()) render();
+                }
+            });
+
+            function newPuzzle() {
+                const level = +document.getElementById("lvl").value;
+                const difficulty = +document.getElementById("diff").value;
+                localStorage.setItem("chroma-level", level);
+                localStorage.setItem("chroma-difficulty", difficulty);
+                const diffName = ["Easy", "Medium", "Hard"][difficulty];
+                const overlay = document.getElementById("genOverlay");
+                const txt = document.getElementById("genTxt");
+                overlay.classList.add("show");
+                document.getElementById("winOverlay").classList.remove("show");
+                const slow = level >= 4 || (level >= 3 && difficulty >= 2);
+                txt.textContent = slow ? `Generating ${diffName}...` : "Generating...";
+
+                setTimeout(() => {
+                    game = ChromaGame.from_level(level);
+                    const seed = (Date.now() * Math.random() * 9999) | 0;
+                    const ok = game.generate(seed, difficulty);
+                    if (!ok) {
+                        overlay.classList.remove("show");
+                        alert("Generation failed — try again!");
+                        return;
+                    }
+                    buildPalette();
+                    buildGrid();
+                    overlay.classList.remove("show");
+                }, 30);
+            }
+
+            document.getElementById("newBtn").addEventListener("click", newPuzzle);
+            document.getElementById("lvl").addEventListener("change", newPuzzle);
+            document.getElementById("diff").addEventListener("change", newPuzzle);
+            document.getElementById("reveal").addEventListener("change", () => { if (game) render(); });
+            document.getElementById("winClose").addEventListener("click", () => {
+                document.getElementById("winOverlay").classList.remove("show");
+            });
+            document.getElementById("winAgain").addEventListener("click", newPuzzle);
+            newPuzzle();
+        </script>
+    </body>
+</html>

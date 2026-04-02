@@ -1,0 +1,30 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const __wbg_chromagame_free: (a: number, b: number) => void;
+export const __wbg_get_levelconfig_height: (a: number) => number;
+export const __wbg_get_levelconfig_num_colors: (a: number) => number;
+export const __wbg_get_levelconfig_width: (a: number) => number;
+export const __wbg_levelconfig_free: (a: number, b: number) => void;
+export const __wbg_set_levelconfig_height: (a: number, b: number) => void;
+export const __wbg_set_levelconfig_num_colors: (a: number, b: number) => void;
+export const __wbg_set_levelconfig_width: (a: number, b: number) => void;
+export const chromagame_cell: (a: number, b: number, c: number) => number;
+export const chromagame_chain_adjacent: (a: number, b: number, c: number) => number;
+export const chromagame_connectivity: (a: number, b: number) => number;
+export const chromagame_from_level: (a: number) => number;
+export const chromagame_generate: (a: number, b: number, c: number) => number;
+export const chromagame_height: (a: number) => number;
+export const chromagame_is_clue: (a: number, b: number, c: number) => number;
+export const chromagame_is_error: (a: number, b: number, c: number) => number;
+export const chromagame_is_solved: (a: number) => number;
+export const chromagame_level_count: () => number;
+export const chromagame_level_info: (a: number) => number;
+export const chromagame_new: (a: number, b: number) => number;
+export const chromagame_num_colors: (a: number) => number;
+export const chromagame_place: (a: number, b: number, c: number, d: number) => void;
+export const chromagame_solution_cell: (a: number, b: number, c: number) => number;
+export const chromagame_undo: (a: number) => number;
+export const chromagame_width: (a: number) => number;
+export const __wbindgen_externrefs: WebAssembly.Table;
+export const __wbindgen_start: () => void;

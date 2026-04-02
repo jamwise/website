@@ -1,0 +1,15 @@
+{
+  "name": "chroma-engine",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "chroma_engine_bg.wasm",
+    "chroma_engine.js",
+    "chroma_engine.d.ts"
+  ],
+  "main": "chroma_engine.js",
+  "types": "chroma_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
