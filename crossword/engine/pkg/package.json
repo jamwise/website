@@ -1,0 +1,15 @@
+{
+  "name": "crossword-engine",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "crossword_engine_bg.wasm",
+    "crossword_engine.js",
+    "crossword_engine.d.ts"
+  ],
+  "main": "crossword_engine.js",
+  "types": "crossword_engine.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
