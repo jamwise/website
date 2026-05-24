@@ -1,17 +1,40 @@
 <!doctype html>
 <html lang="en">
     <head>
-        <script type="module">
-            import { init, trackEvent } from "https://esm.sh/@aptabase/web@0.5.0";
-
-            init("A-EU-5210655683");
-
-            // Track a page view on load
-            trackEvent("page_view", { path: location.pathname });
-
-            // Expose so inline handlers / other scripts can call it
-            window.trackEvent = trackEvent;
+        <script>
+            window.op =
+                window.op ||
+                (function () {
+                    var n = [];
+                    return new Proxy(
+                        function () {
+                            arguments.length && n.push([].slice.call(arguments));
+                        },
+                        {
+                            get: function (t, r) {
+                                return "q" === r
+                                    ? n
+                                    : function () {
+                                          n.push([r].concat([].slice.call(arguments)));
+                                      };
+                            },
+                            has: function (t, r) {
+                                return "q" === r;
+                            },
+                        },
+                    );
+                })();
+            window.op("init", {
+                clientId: "10ca6133-898c-429d-b9ea-6307605c9a1d",
+                trackScreenViews: true,
+                trackOutgoingLinks: true,
+                trackAttributes: true,
+                // sessionReplay: {
+                //   enabled: true,
+                // },
+            });
         </script>
+        <script src="https://openpanel.dev/op1.js" defer async></script>
         <title data-rh="true"></title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
