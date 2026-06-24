@@ -1,0 +1,23 @@
+# Cloudflare reads this file (copied from `public/` to the root of `dist/`
+# during `expo export`) and applies the rules per-route.
+#
+# Strategy: hashed assets get 1-year immutable cache (the filename changes
+# when contents change, so cache invalidation is automatic). HTML
+# revalidates on every request so a new deploy is visible to returning
+# users without a hard refresh.
+
+# Hashed JS / CSS chunks (`entry-<hash>.js`, etc.).
+/_expo/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Hashed font + image assets.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML routes — revalidate on every request so the next deploy is visible
+# to returning users immediately.
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
